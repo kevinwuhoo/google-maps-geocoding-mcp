@@ -75,7 +75,7 @@ export class GeocodingTool {
    * Forward geocoding: Convert address to coordinates
    */
   async geocodeForward(
-    params: ForwardGeocodeParams
+    params: ForwardGeocodeParams,
   ): Promise<GeocodeToolResponse> {
     try {
       this.validateForwardParams(params);
@@ -90,7 +90,7 @@ export class GeocodingTool {
    * Reverse geocoding: Convert coordinates to address
    */
   async geocodeReverse(
-    params: ReverseGeocodeParams
+    params: ReverseGeocodeParams,
   ): Promise<GeocodeToolResponse> {
     try {
       this.validateReverseParams(params);
@@ -128,7 +128,7 @@ export class GeocodingTool {
 
     // Remove undefined values to avoid issues with exactOptionalPropertyTypes
     Object.keys(requestParams).forEach(
-      (key) => requestParams[key] === undefined && delete requestParams[key]
+      (key) => requestParams[key] === undefined && delete requestParams[key],
     );
 
     const response = await this.client.geocode({
@@ -155,7 +155,7 @@ export class GeocodingTool {
 
     // Remove undefined values
     Object.keys(requestParams).forEach(
-      (key) => requestParams[key] === undefined && delete requestParams[key]
+      (key) => requestParams[key] === undefined && delete requestParams[key],
     );
 
     const response = await this.client.reverseGeocode({
@@ -182,7 +182,7 @@ export class GeocodingTool {
 
     // Remove undefined values
     Object.keys(requestParams).forEach(
-      (key) => requestParams[key] === undefined && delete requestParams[key]
+      (key) => requestParams[key] === undefined && delete requestParams[key],
     );
 
     const response = await this.client.reverseGeocode({

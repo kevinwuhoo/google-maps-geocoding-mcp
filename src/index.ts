@@ -40,7 +40,7 @@ async function main() {
       capabilities: {
         tools: {},
       },
-    }
+    },
   );
 
   // List available tools
@@ -205,19 +205,19 @@ async function main() {
       switch (name) {
         case "geocode_forward":
           result = await geocodingTool.geocodeForward(
-            args as unknown as ForwardGeocodeParams
+            args as unknown as ForwardGeocodeParams,
           );
           break;
 
         case "geocode_reverse":
           result = await geocodingTool.geocodeReverse(
-            args as unknown as ReverseGeocodeParams
+            args as unknown as ReverseGeocodeParams,
           );
           break;
 
         case "geocode_place":
           result = await geocodingTool.geocodePlace(
-            args as unknown as PlaceGeocodeParams
+            args as unknown as PlaceGeocodeParams,
           );
           break;
 

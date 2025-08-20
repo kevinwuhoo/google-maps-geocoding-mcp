@@ -63,7 +63,7 @@ describe("GeocodingTool", () => {
       const result = await geocodingTool.geocodeForward(params);
       expect(result.status).toBe(Status.INVALID_REQUEST);
       expect(result.error_message).toBe(
-        "Address must be less than 2048 characters."
+        "Address must be less than 2048 characters.",
       );
       expect(result.results).toEqual([]);
     });
@@ -98,7 +98,7 @@ describe("GeocodingTool", () => {
       const result = await geocodingTool.geocodeReverse(params);
       expect(result.status).toBe(Status.INVALID_REQUEST);
       expect(result.error_message).toBe(
-        'Invalid latlng format. Expected: "latitude,longitude"'
+        'Invalid latlng format. Expected: "latitude,longitude"',
       );
       expect(result.results).toEqual([]);
     });
@@ -109,7 +109,7 @@ describe("GeocodingTool", () => {
       const result = await geocodingTool.geocodeReverse(params);
       expect(result.status).toBe(Status.INVALID_REQUEST);
       expect(result.error_message).toBe(
-        'Invalid latlng format. Expected: "latitude,longitude"'
+        'Invalid latlng format. Expected: "latitude,longitude"',
       );
       expect(result.results).toEqual([]);
     });
@@ -120,7 +120,7 @@ describe("GeocodingTool", () => {
       const result = await geocodingTool.geocodeReverse(params);
       expect(result.status).toBe(Status.INVALID_REQUEST);
       expect(result.error_message).toBe(
-        'Invalid latlng format. Expected: "latitude,longitude"'
+        'Invalid latlng format. Expected: "latitude,longitude"',
       );
       expect(result.results).toEqual([]);
     });
@@ -136,7 +136,7 @@ describe("GeocodingTool", () => {
       expect(result.results).toEqual([]);
       // Should have passed validation - error should not be about latlng format
       expect(result.error_message).not.toBe(
-        'Invalid latlng format. Expected: "latitude,longitude"'
+        'Invalid latlng format. Expected: "latitude,longitude"',
       );
     });
   });
@@ -157,7 +157,7 @@ describe("GeocodingTool", () => {
       const result = await geocodingTool.geocodePlace(params);
       expect(result.status).toBe(Status.INVALID_REQUEST);
       expect(result.error_message).toBe(
-        'Invalid Place ID format. Must start with "ChIJ".'
+        'Invalid Place ID format. Must start with "ChIJ".',
       );
       expect(result.results).toEqual([]);
     });
@@ -173,7 +173,7 @@ describe("GeocodingTool", () => {
       expect(result.results).toEqual([]);
       // Should have passed validation - error should not be about place_id format
       expect(result.error_message).not.toBe(
-        'Invalid Place ID format. Must start with "ChIJ".'
+        'Invalid Place ID format. Must start with "ChIJ".',
       );
     });
   });
@@ -188,7 +188,7 @@ describe("GeocodingTool", () => {
       const result = await geocodingTool.geocodeForward(params);
       expect(result.status).toBe(Status.INVALID_REQUEST);
       expect(result.error_message).toBe(
-        'Invalid language format. Expected: "en", "en-US", etc.'
+        'Invalid language format. Expected: "en", "en-US", etc.',
       );
       expect(result.results).toEqual([]);
     });
@@ -202,7 +202,7 @@ describe("GeocodingTool", () => {
       const result = await geocodingTool.geocodeForward(params);
       expect(result.status).toBe(Status.INVALID_REQUEST);
       expect(result.error_message).toBe(
-        'Invalid region format. Expected: "us", "uk", etc.'
+        'Invalid region format. Expected: "us", "uk", etc.',
       );
       expect(result.results).toEqual([]);
     });
@@ -226,7 +226,7 @@ describe("GeocodingTool", () => {
         expect(result.results).toEqual([]);
         // Should have passed validation - error should not be about latlng format
         expect(result.error_message).not.toBe(
-          'Invalid latlng format. Expected: "latitude,longitude"'
+          'Invalid latlng format. Expected: "latitude,longitude"',
         );
       }
     });
@@ -250,7 +250,7 @@ describe("GeocodingTool", () => {
         const result = await geocodingTool.geocodeReverse(params);
         expect(result.status).toBe(Status.INVALID_REQUEST);
         expect(result.error_message).toBe(
-          'Invalid latlng format. Expected: "latitude,longitude"'
+          'Invalid latlng format. Expected: "latitude,longitude"',
         );
         expect(result.results).toEqual([]);
       }

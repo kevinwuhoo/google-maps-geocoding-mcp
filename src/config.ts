@@ -23,7 +23,7 @@ export function loadConfig(): ServerConfig {
   if (!apiKey) {
     throw new Error(
       "GOOGLE_MAPS_API_KEY environment variable is required. " +
-        "Please set it to your Google Maps API key."
+        "Please set it to your Google Maps API key.",
     );
   }
 
