@@ -6,7 +6,12 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { GeocodingTool, GeocodeParams } from "./geocoding-tool.js";
+import {
+  GeocodingTool,
+  ForwardGeocodeParams,
+  ReverseGeocodeParams,
+  PlaceGeocodeParams,
+} from "./geocoding-tool.js";
 import { loadConfig } from "./config.js";
 
 /**
@@ -43,37 +48,20 @@ async function main() {
     return {
       tools: [
         {
-          name: "geocode",
+          name: "geocode_forward",
           description:
-            "Geocode addresses, coordinates, or place IDs using Google Maps API. Supports forward geocoding (address to coordinates), reverse geocoding (coordinates to address), and place geocoding (Place ID to address).",
+            "Convert an address to geographic coordinates (latitude/longitude) using Google Maps Geocoding API.",
           inputSchema: {
             type: "object",
             properties: {
-              mode: {
-                type: "string",
-                enum: ["forward", "reverse", "place"],
-                description:
-                  'Geocoding mode: "forward" (address to coordinates), "reverse" (coordinates to address), or "place" (Place ID to address)',
-              },
               address: {
                 type: "string",
                 description:
-                  'Address to geocode (required for forward mode). Example: "1600 Amphitheatre Parkway, Mountain View, CA"',
-              },
-              latlng: {
-                type: "string",
-                description:
-                  'Latitude,longitude coordinates (required for reverse mode). Example: "40.714224,-73.961452"',
-              },
-              place_id: {
-                type: "string",
-                description:
-                  'Google Place ID (required for place mode). Example: "ChIJd8BlQ2BZwokRAFUEcm_qrcA"',
+                  'Address to geocode. Example: "1600 Amphitheatre Parkway, Mountain View, CA"',
               },
               components: {
                 type: "object",
-                description:
-                  "Component filtering for forward geocoding (optional)",
+                description: "Component filtering (optional)",
                 properties: {
                   country: {
                     type: "string",
@@ -113,82 +101,151 @@ async function main() {
               },
               language: {
                 type: "string",
-                description:
-                  'Language for results (optional). Example: "en", "es", "fr"',
+                description: 'Language for results (e.g., "en", "es")',
               },
               region: {
                 type: "string",
-                description:
-                  'Region bias using ccTLD format (optional). Example: "us", "uk", "au"',
+                description: 'Region bias (e.g., "us", "uk")',
               },
               result_type: {
                 type: "array",
                 items: { type: "string" },
                 description:
-                  'Filter results by type (optional). Examples: ["street_address"], ["political"]',
+                  'Filter by result types (e.g., ["street_address"])',
               },
               location_type: {
                 type: "array",
                 items: { type: "string" },
-                description:
-                  'Filter by location precision (optional). Examples: ["ROOFTOP"], ["RANGE_INTERPOLATED"]',
+                description: 'Filter by location precision (e.g., ["ROOFTOP"])',
               },
             },
-            required: ["mode"],
-            oneOf: [
-              {
-                properties: { mode: { const: "forward" } },
-                required: ["mode", "address"],
+            required: ["address"],
+          },
+        },
+        {
+          name: "geocode_reverse",
+          description:
+            "Convert geographic coordinates (latitude/longitude) to a human-readable address using Google Maps Geocoding API.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              latlng: {
+                type: "string",
+                description:
+                  'Latitude,longitude coordinates. Example: "40.714224,-73.961452"',
               },
-              {
-                properties: { mode: { const: "reverse" } },
-                required: ["mode", "latlng"],
+              language: {
+                type: "string",
+                description: 'Language for results (e.g., "en", "es")',
               },
-              {
-                properties: { mode: { const: "place" } },
-                required: ["mode", "place_id"],
+              region: {
+                type: "string",
+                description: 'Region bias (e.g., "us", "uk")',
               },
-            ],
+              result_type: {
+                type: "array",
+                items: { type: "string" },
+                description:
+                  'Filter by result types (e.g., ["street_address"])',
+              },
+              location_type: {
+                type: "array",
+                items: { type: "string" },
+                description: 'Filter by location precision (e.g., ["ROOFTOP"])',
+              },
+            },
+            required: ["latlng"],
+          },
+        },
+        {
+          name: "geocode_place",
+          description:
+            "Convert a Google Place ID to a human-readable address using Google Maps Geocoding API.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              place_id: {
+                type: "string",
+                description:
+                  'Google Place ID. Example: "ChIJd8BlQ2BZwokRAFUEcm_qrcA"',
+              },
+              language: {
+                type: "string",
+                description: 'Language for results (e.g., "en", "es")',
+              },
+              region: {
+                type: "string",
+                description: 'Region bias (e.g., "us", "uk")',
+              },
+              result_type: {
+                type: "array",
+                items: { type: "string" },
+                description:
+                  'Filter by result types (e.g., ["street_address"])',
+              },
+              location_type: {
+                type: "array",
+                items: { type: "string" },
+                description: 'Filter by location precision (e.g., ["ROOFTOP"])',
+              },
+            },
+            required: ["place_id"],
           },
         },
       ],
     };
   });
 
-  // Handle tool execution
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
 
-    if (name === "geocode") {
-      try {
-        const params = args as unknown as GeocodeParams;
-        const result = await geocodingTool.geocode(params);
+    try {
+      let result;
 
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
-      } catch (error: any) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Error: ${error.message}`,
-            },
-          ],
-          isError: true,
-        };
+      switch (name) {
+        case "geocode_forward":
+          result = await geocodingTool.geocodeForward(
+            args as unknown as ForwardGeocodeParams
+          );
+          break;
+
+        case "geocode_reverse":
+          result = await geocodingTool.geocodeReverse(
+            args as unknown as ReverseGeocodeParams
+          );
+          break;
+
+        case "geocode_place":
+          result = await geocodingTool.geocodePlace(
+            args as unknown as PlaceGeocodeParams
+          );
+          break;
+
+        default:
+          throw new Error(`Unknown tool: ${name}`);
       }
-    }
 
-    throw new Error(`Unknown tool: ${name}`);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    } catch (error: any) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error: ${error.message}`,
+          },
+        ],
+        isError: true,
+      };
+    }
   });
 
-  // Start server
   const transport = new StdioServerTransport();
   await server.connect(transport);
 

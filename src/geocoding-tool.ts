@@ -1,65 +1,63 @@
 import {
   Client,
   GeocodeResponse,
-  GeocodeComponents,
-  ReverseGeocodingLocationType,
+  GeocodeRequest,
+  ReverseGeocodeRequest,
 } from "@googlemaps/google-maps-services-js";
-import {
-  AddressType,
-  LatLngBounds,
-} from "@googlemaps/google-maps-services-js/dist/common";
+import { Status } from "@googlemaps/google-maps-services-js/dist/common.js";
 import { ServerConfig } from "./config.js";
 
-// MCP-specific types (minimal wrapper for routing)
-export type GeocodeMode = "forward" | "reverse" | "place";
+// Use library types but override specific fields for MCP simplicity
+// This gives us type safety from the library while keeping our interface clean
 
-// Common optional parameters for all modes
-interface BaseGeocodeParams {
-  language?: string;
-  region?: string;
-  result_type?: AddressType[];
-  location_type?: ReverseGeocodingLocationType[];
-}
-
-// Discriminated union for MCP routing
-export type GeocodeParams = BaseGeocodeParams &
-  (
-    | {
-        mode: "forward";
-        address: string;
-        components?: GeocodeComponents;
-        bounds?: LatLngBounds;
-      }
-    | { mode: "reverse"; latlng: string }
-    | { mode: "place"; place_id: string }
-  );
-
-// Export specific types for backwards compatibility
-export type ForwardGeocodeParams = Extract<GeocodeParams, { mode: "forward" }>;
-export type ReverseGeocodeParams = Extract<GeocodeParams, { mode: "reverse" }>;
-export type PlaceGeocodeParams = Extract<GeocodeParams, { mode: "place" }>;
-
-export interface GeocodeToolResponse {
-  status: string;
-  results: GeocodeResponse["data"]["results"];
-  metadata: {
-    mode: GeocodeMode;
-    request_params: Record<string, any>;
-    timestamp: string;
-    api_version: string;
+export type ForwardGeocodeParams = Omit<
+  GeocodeRequest["params"],
+  "key" | "bounds" | "language"
+> & {
+  // Override bounds to always use object format for MCP simplicity
+  bounds?: {
+    northeast: { lat: number; lng: number };
+    southwest: { lat: number; lng: number };
   };
-  error_message?: string;
-}
+  // Override language to accept any string, this is a enum in the library with
+  // 100+ options, basically all the languages in the world.
+  language?: string;
+  // Add commonly used filters
+  result_type?: string[];
+  location_type?: string[];
+};
 
-// Type guards (simplified with discriminated union)
-const isForwardGeocodeParams = (p: GeocodeParams): p is ForwardGeocodeParams =>
-  p.mode === "forward";
+export type ReverseGeocodeParams = Omit<
+  ReverseGeocodeRequest["params"],
+  "key" | "latlng" | "place_id" | "language" | "result_type" | "location_type"
+> & {
+  // Override latlng to only accept string format for MCP simplicity
+  latlng: string;
+  // Override language to accept any string (not Language enum)
+  language?: string;
+  // Add region which might not be in the base type
+  region?: string;
+  // Override to accept string arrays instead of enum arrays
+  result_type?: string[];
+  location_type?: string[];
+};
 
-const isReverseGeocodeParams = (p: GeocodeParams): p is ReverseGeocodeParams =>
-  p.mode === "reverse";
+export type PlaceGeocodeParams = Omit<
+  ReverseGeocodeRequest["params"],
+  "key" | "latlng" | "language" | "result_type" | "location_type"
+> & {
+  // Ensure place_id is required
+  place_id: string;
+  // Override language to accept any string
+  language?: string;
+  // Add region which might not be in the base type
+  region?: string;
+  // Override to accept string arrays instead of enum arrays
+  result_type?: string[];
+  location_type?: string[];
+};
 
-const isPlaceGeocodeParams = (p: GeocodeParams): p is PlaceGeocodeParams =>
-  p.mode === "place";
+export type GeocodeToolResponse = GeocodeResponse["data"];
 
 /**
  * Google Maps Geocoding API client wrapper
@@ -74,95 +72,64 @@ export class GeocodingTool {
   }
 
   /**
-   * Execute geocoding based on the provided parameters
+   * Forward geocoding: Convert address to coordinates
    */
-  async geocode(params: GeocodeParams): Promise<GeocodeToolResponse> {
+  async geocodeForward(
+    params: ForwardGeocodeParams
+  ): Promise<GeocodeToolResponse> {
     try {
-      // Validate parameters
-      this.validateParams(params);
-
-      let response;
-      let requestParams: Record<string, any>;
-
-      if (isForwardGeocodeParams(params)) {
-        const result = await this.forwardGeocode(params);
-        response = result.response;
-        requestParams = result.requestParams;
-      } else if (isReverseGeocodeParams(params)) {
-        const result = await this.reverseGeocode(params);
-        response = result.response;
-        requestParams = result.requestParams;
-      } else if (isPlaceGeocodeParams(params)) {
-        const result = await this.placeGeocode(params);
-        response = result.response;
-        requestParams = result.requestParams;
-      } else {
-        throw new Error(
-          'Invalid geocoding mode. Must be "forward", "reverse", or "place".'
-        );
-      }
-
-      return {
-        status: response.data.status,
-        results: response.data.results || [],
-        metadata: {
-          mode: params.mode,
-          request_params: requestParams,
-          timestamp: new Date().toISOString(),
-          api_version: "3.4.2",
-        },
-        error_message: response.data.error_message,
-      };
+      this.validateForwardParams(params);
+      const result = await this.executeForwardGeocode(params);
+      return result.response.data;
     } catch (error: any) {
-      // Handle API errors gracefully
-      if (error.response?.data) {
-        return {
-          status: error.response.data.status || "ERROR",
-          results: [],
-          metadata: {
-            mode: params.mode,
-            request_params: {},
-            timestamp: new Date().toISOString(),
-            api_version: "3.4.2",
-          },
-          error_message: error.response.data.error_message || error.message,
-        };
-      }
-
-      throw error;
+      return this.handleError(error);
     }
   }
 
   /**
-   * Forward geocoding (address to coordinates)
+   * Reverse geocoding: Convert coordinates to address
    */
-  private async forwardGeocode(params: ForwardGeocodeParams) {
+  async geocodeReverse(
+    params: ReverseGeocodeParams
+  ): Promise<GeocodeToolResponse> {
+    try {
+      this.validateReverseParams(params);
+      const result = await this.executeReverseGeocode(params);
+      return result.response.data;
+    } catch (error: any) {
+      return this.handleError(error);
+    }
+  }
+
+  /**
+   * Place geocoding: Convert Place ID to address
+   */
+  async geocodePlace(params: PlaceGeocodeParams): Promise<GeocodeToolResponse> {
+    try {
+      this.validatePlaceParams(params);
+      const result = await this.executePlaceGeocode(params);
+      return result.response.data;
+    } catch (error: any) {
+      return this.handleError(error);
+    }
+  }
+
+  private async executeForwardGeocode(params: ForwardGeocodeParams) {
     const requestParams: any = {
       address: params.address,
       key: this.config.apiKey,
-      language: params.language || this.config.defaultLanguage,
+      language: params.language || this.config.defaultLanguage || undefined,
+      region: params.region || this.config.defaultRegion || undefined,
+      components: params.components || undefined,
+      bounds: params.bounds || undefined,
+      result_type: params.result_type || undefined,
+      location_type: params.location_type || undefined,
     };
 
-    // Add optional parameters
-    if (params.region || this.config.defaultRegion) {
-      requestParams.region = params.region || this.config.defaultRegion;
-    }
-
-    if (params.components) {
-      requestParams.components = params.components;
-    }
-
-    if (params.bounds) {
-      requestParams.bounds = params.bounds;
-    }
-
-    if (params.result_type) {
-      requestParams.result_type = params.result_type;
-    }
-
-    if (params.location_type) {
-      requestParams.location_type = params.location_type;
-    }
+    // Remove undefined values to avoid issues with exactOptionalPropertyTypes
+    Object.keys(requestParams).forEach(
+      (key) => requestParams[key] === undefined && delete requestParams[key]
+    );
 
     const response = await this.client.geocode({
       params: requestParams,
@@ -172,28 +139,24 @@ export class GeocodingTool {
     return { response, requestParams };
   }
 
-  /**
-   * Reverse geocoding (coordinates to address)
-   */
-  private async reverseGeocode(params: ReverseGeocodeParams) {
+  private async executeReverseGeocode(params: ReverseGeocodeParams) {
     const requestParams: any = {
-      latlng: params.latlng,
+      latlng: params.latlng, // Library accepts string format
       key: this.config.apiKey,
-      language: params.language || this.config.defaultLanguage,
+      language: params.language || this.config.defaultLanguage || undefined,
+      result_type: params.result_type || undefined,
+      location_type: params.location_type || undefined,
     };
 
-    // Add optional parameters
-    if (params.region || this.config.defaultRegion) {
-      requestParams.region = params.region || this.config.defaultRegion;
+    // Note: reverse geocoding doesn't support region parameter
+    if (params.region) {
+      requestParams.region = params.region;
     }
 
-    if (params.result_type) {
-      requestParams.result_type = params.result_type;
-    }
-
-    if (params.location_type) {
-      requestParams.location_type = params.location_type;
-    }
+    // Remove undefined values
+    Object.keys(requestParams).forEach(
+      (key) => requestParams[key] === undefined && delete requestParams[key]
+    );
 
     const response = await this.client.reverseGeocode({
       params: requestParams,
@@ -203,28 +166,24 @@ export class GeocodingTool {
     return { response, requestParams };
   }
 
-  /**
-   * Place geocoding (Place ID to address)
-   */
-  private async placeGeocode(params: PlaceGeocodeParams) {
+  private async executePlaceGeocode(params: PlaceGeocodeParams) {
     const requestParams: any = {
       place_id: params.place_id,
       key: this.config.apiKey,
-      language: params.language || this.config.defaultLanguage,
+      language: params.language || this.config.defaultLanguage || undefined,
+      result_type: params.result_type || undefined,
+      location_type: params.location_type || undefined,
     };
 
-    // Add optional parameters
-    if (params.region || this.config.defaultRegion) {
-      requestParams.region = params.region || this.config.defaultRegion;
+    // Note: place geocoding doesn't support region parameter
+    if (params.region) {
+      requestParams.region = params.region;
     }
 
-    if (params.result_type) {
-      requestParams.result_type = params.result_type;
-    }
-
-    if (params.location_type) {
-      requestParams.location_type = params.location_type;
-    }
+    // Remove undefined values
+    Object.keys(requestParams).forEach(
+      (key) => requestParams[key] === undefined && delete requestParams[key]
+    );
 
     const response = await this.client.reverseGeocode({
       params: requestParams,
@@ -235,49 +194,60 @@ export class GeocodingTool {
   }
 
   /**
-   * Validate geocoding parameters
+   * Handle API errors consistently
    */
-  private validateParams(params: GeocodeParams): void {
-    if (!params.mode) {
-      throw new Error(
-        'Mode is required. Must be "forward", "reverse", or "place".'
-      );
+  private handleError(error: any): GeocodeToolResponse {
+    if (error.response?.data) {
+      return error.response.data;
     }
+    // For non-API errors, create a response in the expected format
+    return {
+      status: Status.INVALID_REQUEST,
+      results: [],
+      error_message: error.message,
+    };
+  }
 
-    if (isForwardGeocodeParams(params)) {
-      if (!params.address || params.address.trim().length === 0) {
-        throw new Error("Address is required for forward geocoding.");
-      }
-      if (params.address.length > 2048) {
-        throw new Error("Address must be less than 2048 characters.");
-      }
+  private validateForwardParams(params: ForwardGeocodeParams): void {
+    if (!params.address || params.address.trim().length === 0) {
+      throw new Error("Address is required.");
     }
-
-    if (isReverseGeocodeParams(params)) {
-      if (!params.latlng) {
-        throw new Error("Latlng is required for reverse geocoding.");
-      }
-      if (!this.isValidLatLng(params.latlng)) {
-        throw new Error(
-          'Invalid latlng format. Expected: "latitude,longitude"'
-        );
-      }
+    if (params.address.length > 2048) {
+      throw new Error("Address must be less than 2048 characters.");
     }
+    this.validateCommonParams(params);
+  }
 
-    if (isPlaceGeocodeParams(params)) {
-      if (!params.place_id) {
-        throw new Error("Place ID is required for place geocoding.");
-      }
-      if (!params.place_id.startsWith("ChIJ")) {
-        throw new Error('Invalid Place ID format. Must start with "ChIJ".');
-      }
+  private validateReverseParams(params: ReverseGeocodeParams): void {
+    if (!params.latlng) {
+      throw new Error("Latlng is required.");
     }
+    if (
+      typeof params.latlng === "string" &&
+      !this.isValidLatLng(params.latlng)
+    ) {
+      throw new Error('Invalid latlng format. Expected: "latitude,longitude"');
+    }
+    this.validateCommonParams(params);
+  }
 
-    // Validate optional parameters
+  private validatePlaceParams(params: PlaceGeocodeParams): void {
+    if (!params.place_id) {
+      throw new Error("Place ID is required.");
+    }
+    if (!params.place_id.startsWith("ChIJ")) {
+      throw new Error('Invalid Place ID format. Must start with "ChIJ".');
+    }
+    this.validateCommonParams(params);
+  }
+
+  private validateCommonParams(params: {
+    language?: string;
+    region?: string;
+  }): void {
     if (params.language && !/^[a-z]{2}(-[A-Z]{2})?$/.test(params.language)) {
       throw new Error('Invalid language format. Expected: "en", "en-US", etc.');
     }
-
     if (params.region && !/^[a-z]{2}$/.test(params.region)) {
       throw new Error('Invalid region format. Expected: "us", "uk", etc.');
     }
