@@ -1,0 +1,18 @@
+# Build output
+dist/
+
+# Dependencies
+node_modules/
+
+# Coverage reports
+coverage/
+
+# Generated files
+*.js
+*.cjs
+*.mjs
+
+# Lock files
+pnpm-lock.yaml
+package-lock.json
+yarn.lock

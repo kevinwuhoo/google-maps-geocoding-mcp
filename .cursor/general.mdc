@@ -1,0 +1,55 @@
+---
+alwaysApply: true
+---
+
+## Core Principles
+
+### Maximize Library Usage
+
+- **Always** leverage the official `@googlemaps/google-maps-services-js` library
+- Use library types as the foundation, avoiding custom type definitions where possible
+- Let the library handle validation and API interaction details
+
+#### Type Management Strategy
+
+- Use TypeScript utility types (`Omit`, `Pick`, `&`) to derive types from the library
+- Override only what's necessary for MCP/LLM simplicity:
+  - Enums → strings (e.g., `Language` enum → `string`)
+  - Complex unions → single format (e.g., `LatLng` union → `string` only)
+  - Optional fields that need different handling
+- Never create parallel type hierarchies - derive from the source
+
+#### Direct API Responses
+
+- Return Google API responses directly without unnecessary wrappers
+- Don't add metadata that can become stale (versions, timestamps)
+- Trust the official API response structure
+
+### Tool Design for LLMs
+
+- Split multi-mode operations into separate, single-purpose tools
+- Keep parameter schemas flat and predictable
+- Use descriptive tool names that clearly indicate their purpose
+- Provide comprehensive descriptions and examples in tool schemas
+
+### Avoid Maintenance Burdens
+
+- No hardcoded version strings that need manual updates
+- No constants that duplicate library information
+- Let TypeScript's type system enforce correctness
+- Do not maintain backwards compatibility
+
+## Development Practices
+
+- **Type Safety First**: Let TypeScript catch errors at compile time
+- **Validate at Boundaries**: Validate MCP inputs before passing to library
+- **Fail Fast**: Return errors immediately, don't suppress them
+- **Keep It Simple**: If the library provides it, use it directly
+- **Document Intent**: Comments should explain "why", not "what". Do not write comments for self documenting code.
+
+## Testing Approach
+
+- Focus on parameter validation and transformation logic
+- Mock the Google Maps client for unit tests
+- Use real API calls only for integration tests
+- Test error handling paths explicitly

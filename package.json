@@ -4,9 +4,13 @@
   "description": "MCP server for Google Maps Geocoding API",
   "main": "dist/index.js",
   "type": "module",
+  "bin": {
+    "google-maps-geocoding-mcp": "./dist/index.js"
+  },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && chmod +x dist/index.js",
     "clean": "rm -rf dist",
+    "prepublishOnly": "pnpm run clean && pnpm run build && pnpm run test:run",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "test": "vitest",
@@ -27,8 +31,21 @@
     "claude",
     "model-context-protocol"
   ],
-  "author": "Your Name",
+  "author": "Kevin Wu",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kevinwuhoo/google-maps-geocoding-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kevinwuhoo/google-maps-geocoding-mcp/issues"
+  },
+  "homepage": "https://github.com/kevinwuhoo/google-maps-geocoding-mcp#readme",
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
   "dependencies": {
     "@googlemaps/google-maps-services-js": "^3.4.2",
     "@modelcontextprotocol/sdk": "^1.17.3"
@@ -49,6 +66,6 @@
     "vitest": "^3.2.4"
   },
   "engines": {
-    "node": ">=24.0.0"
+    "node": ">=18.0.0"
   }
 }
