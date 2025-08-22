@@ -1,5 +1,12 @@
 # Google Maps Geocoding MCP Server
 
+[![NPM Version](https://img.shields.io/npm/v/google-maps-geocoding-mcp?style=flat&color=blue)](https://www.npmjs.com/package/google-maps-geocoding-mcp)
+[![NPM Downloads](https://img.shields.io/npm/dw/google-maps-geocoding-mcp?style=flat&color=green)](https://www.npmjs.com/package/google-maps-geocoding-mcp)
+[![License](https://img.shields.io/npm/l/google-maps-geocoding-mcp?style=flat&color=blue)](https://github.com/kevinwuhoo/google-maps-geocoding-mcp/blob/main/LICENSE)
+[![Node.js Version](https://img.shields.io/node/v/google-maps-geocoding-mcp?style=flat&color=green)](https://nodejs.org/)
+[![GitHub Stars](https://img.shields.io/github/stars/kevinwuhoo/google-maps-geocoding-mcp?style=flat&color=yellow)](https://github.com/kevinwuhoo/google-maps-geocoding-mcp)
+[![GitHub Issues](https://img.shields.io/github/issues/kevinwuhoo/google-maps-geocoding-mcp?style=flat&color=red)](https://github.com/kevinwuhoo/google-maps-geocoding-mcp/issues)
+
 A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that provides access to Google Maps Geocoding API. This server enables LLM clients like Claude Desktop and Cursor to perform address geocoding, reverse geocoding, and place ID lookups. The aim of this MCP is _only_ the Geocoding API. This is because there isn't great support for connecting to many MCP servers yet in most tools.
 
 ## Features
