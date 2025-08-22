@@ -13,6 +13,16 @@ import {
   PlaceGeocodeParams,
 } from "./geocoding-tool.js";
 import { loadConfig } from "./config.js";
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageJson = JSON.parse(
+  readFileSync(join(__dirname, "..", "package.json"), "utf-8"),
+);
+const { version } = packageJson;
 
 /**
  * Main MCP server for Google Maps Geocoding API
@@ -34,7 +44,7 @@ async function main() {
   const server = new Server(
     {
       name: "google-maps-geocoding",
-      version: "1.0.0",
+      version: version,
     },
     {
       capabilities: {
@@ -248,6 +258,9 @@ async function main() {
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
+
+  // Log server startup
+  console.error(`Google Maps Geocoding MCP Server v${version} started`);
 
   // Graceful shutdown
   process.on("SIGINT", async () => {
