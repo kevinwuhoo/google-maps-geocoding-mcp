@@ -1,3 +1,5 @@
+[![MSeeP.ai Security Assessment Badge](https://mseep.net/pr/kevinwuhoo-google-maps-geocoding-mcp-badge.png)](https://mseep.ai/app/kevinwuhoo-google-maps-geocoding-mcp)
+
 # Google Maps Geocoding MCP Server
 
 [![NPM Version](https://img.shields.io/npm/v/google-maps-geocoding-mcp?style=flat&color=blue)](https://www.npmjs.com/package/google-maps-geocoding-mcp)
