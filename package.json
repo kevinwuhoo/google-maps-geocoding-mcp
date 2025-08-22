@@ -16,6 +16,7 @@
     "test:run": "vitest --run",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
+    "precommit": "pnpm run lint && pnpm run type-check && pnpm run format",
     "type-check": "tsc --noEmit",
     "type-check:watch": "tsc --noEmit --watch",
     "lint": "eslint src/**/*.ts",

@@ -27,8 +27,6 @@ export default tseslint.config(
         { argsIgnorePattern: "^_" },
       ],
       "no-console": "off",
-      // Allow any in this codebase - error handling and dynamic API objects are reasonable uses
-      "@typescript-eslint/no-explicit-any": "warn",
     },
   },
 

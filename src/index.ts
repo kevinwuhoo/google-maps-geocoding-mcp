@@ -32,8 +32,9 @@ async function main() {
   let config;
   try {
     config = loadConfig();
-  } catch (error: any) {
-    console.error("Configuration error:", error.message);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Configuration error:", message);
     process.exit(1);
   }
 
@@ -243,12 +244,13 @@ async function main() {
           },
         ],
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
       return {
         content: [
           {
             type: "text",
-            text: `Error: ${error.message}`,
+            text: `Error: ${message}`,
           },
         ],
         isError: true,

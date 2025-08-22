@@ -7,8 +7,27 @@ import {
 import { Status } from "@googlemaps/google-maps-services-js/dist/common.js";
 import { ServerConfig } from "./config.js";
 
-// Use library types but override specific fields for MCP simplicity
-// This gives us type safety from the library while keeping our interface clean
+/**
+ * Type Strategy for Google Maps API Integration
+ *
+ * The @googlemaps/google-maps-services-js library provides TypeScript types that are
+ * more restrictive than what the actual Google Maps Geocoding API accepts.
+ *
+ * Key discrepancies:
+ * 1. The API accepts flexible string values for language, result_type, location_type
+ *    but the library uses strict enums/types
+ * 2. Some valid API parameters are missing from the TypeScript definitions entirely
+ *    (e.g., result_type and location_type for forward geocoding)
+ *
+ * Our approach:
+ * - Use the library types as a base for type safety on core fields
+ * - Accept flexible string/string[] types in our MCP interface for maximum compatibility
+ * - Use type intersections and assertions when calling the library to bridge the gap
+ * - Document each workaround with references to official API documentation
+ *
+ * This ensures our MCP server exposes the full capabilities of the Google Maps API
+ * while still benefiting from the type safety the library provides.
+ */
 
 export type ForwardGeocodeParams = Omit<
   GeocodeRequest["params"],
@@ -81,7 +100,7 @@ export class GeocodingTool {
       this.validateForwardParams(params);
       const result = await this.executeForwardGeocode(params);
       return result.response.data;
-    } catch (error: any) {
+    } catch (error) {
       return this.handleError(error);
     }
   }
@@ -96,7 +115,7 @@ export class GeocodingTool {
       this.validateReverseParams(params);
       const result = await this.executeReverseGeocode(params);
       return result.response.data;
-    } catch (error: any) {
+    } catch (error) {
       return this.handleError(error);
     }
   }
@@ -109,26 +128,48 @@ export class GeocodingTool {
       this.validatePlaceParams(params);
       const result = await this.executePlaceGeocode(params);
       return result.response.data;
-    } catch (error: any) {
+    } catch (error) {
       return this.handleError(error);
     }
   }
 
   private async executeForwardGeocode(params: ForwardGeocodeParams) {
-    const requestParams: any = {
+    /**
+     * IMPORTANT: TypeScript Library Limitations
+     *
+     * The @googlemaps/google-maps-services-js library's TypeScript definitions are incomplete
+     * compared to what the actual Google Maps Geocoding API accepts.
+     *
+     * According to the official API documentation:
+     * https://developers.google.com/maps/documentation/geocoding/requests-geocoding
+     *
+     * Forward geocoding DOES support these optional parameters:
+     * - result_type: Filter results to specific address types (e.g., "street_address")
+     * - location_type: Filter by location precision (e.g., "ROOFTOP", "APPROXIMATE")
+     *
+     * However, the library's GeocodeRequest type doesn't include these fields.
+     * We use type intersection with Record<string, unknown> and type assertions (as never)
+     * to work around this limitation while still maintaining type safety for known fields.
+     */
+    const requestParams: GeocodeRequest["params"] & Record<string, unknown> = {
       address: params.address,
       key: this.config.apiKey,
       language: params.language || this.config.defaultLanguage || undefined,
       region: params.region || this.config.defaultRegion || undefined,
       components: params.components || undefined,
       bounds: params.bounds || undefined,
-      result_type: params.result_type || undefined,
-      location_type: params.location_type || undefined,
+      // These parameters ARE supported by the API but missing from TypeScript definitions
+      ...(params.result_type && { result_type: params.result_type as never }),
+      ...(params.location_type && {
+        location_type: params.location_type as never,
+      }),
     };
 
     // Remove undefined values to avoid issues with exactOptionalPropertyTypes
     Object.keys(requestParams).forEach(
-      (key) => requestParams[key] === undefined && delete requestParams[key],
+      (key) =>
+        requestParams[key] === undefined &&
+        delete requestParams[key as keyof typeof requestParams],
     );
 
     const response = await this.client.geocode({
@@ -140,22 +181,38 @@ export class GeocodingTool {
   }
 
   private async executeReverseGeocode(params: ReverseGeocodeParams) {
-    const requestParams: any = {
+    /**
+     * TypeScript Library Limitations for Reverse Geocoding
+     *
+     * Per official documentation:
+     * https://developers.google.com/maps/documentation/geocoding/requests-geocoding#ReverseGeocoding
+     *
+     * The ReverseGeocodeRequest type has several issues:
+     * 1. language is typed as Language enum but API accepts any BCP-47 language code string
+     * 2. result_type is typed as AddressType[] but API accepts string array
+     * 3. location_type is typed as ReverseGeocodingLocationType[] but API accepts string array
+     * 4. region parameter isn't documented for reverse geocoding but the API accepts it
+     *
+     * We use type assertions (as never) to bypass these overly restrictive types.
+     */
+    const requestParams: ReverseGeocodeRequest["params"] &
+      Record<string, unknown> = {
       latlng: params.latlng, // Library accepts string format
       key: this.config.apiKey,
-      language: params.language || this.config.defaultLanguage || undefined,
-      result_type: params.result_type || undefined,
-      location_type: params.location_type || undefined,
+      language: (params.language ||
+        this.config.defaultLanguage ||
+        undefined) as never,
+      result_type: params.result_type as never,
+      location_type: params.location_type as never,
+      // Region works in practice even though not documented for reverse geocoding
+      ...(params.region && { region: params.region }),
     };
-
-    // Note: reverse geocoding doesn't support region parameter
-    if (params.region) {
-      requestParams.region = params.region;
-    }
 
     // Remove undefined values
     Object.keys(requestParams).forEach(
-      (key) => requestParams[key] === undefined && delete requestParams[key],
+      (key) =>
+        requestParams[key] === undefined &&
+        delete requestParams[key as keyof typeof requestParams],
     );
 
     const response = await this.client.reverseGeocode({
@@ -167,25 +224,42 @@ export class GeocodingTool {
   }
 
   private async executePlaceGeocode(params: PlaceGeocodeParams) {
-    const requestParams: any = {
+    /**
+     * TypeScript Library Limitations for Place Geocoding
+     *
+     * Per official documentation:
+     * https://developers.google.com/maps/documentation/geocoding/requests-geocoding#place-id
+     *
+     * Place geocoding uses the same endpoint as forward geocoding, just with place_id
+     * instead of address. The API accepts all the same optional parameters:
+     * - language: Language for results
+     * - region: Region code for biasing
+     * - result_type: Filter results (though less useful with place_id)
+     * - location_type: Filter by precision (though less useful with place_id)
+     *
+     * The library correctly routes place_id through geocode() not reverseGeocode(),
+     * but still doesn't include result_type and location_type in the type definitions.
+     */
+    const requestParams: GeocodeRequest["params"] & Record<string, unknown> = {
       place_id: params.place_id,
       key: this.config.apiKey,
       language: params.language || this.config.defaultLanguage || undefined,
-      result_type: params.result_type || undefined,
-      location_type: params.location_type || undefined,
+      // These work with place geocoding even if not commonly used
+      ...(params.result_type && { result_type: params.result_type as never }),
+      ...(params.location_type && {
+        location_type: params.location_type as never,
+      }),
+      ...(params.region && { region: params.region }),
     };
-
-    // Note: place geocoding doesn't support region parameter
-    if (params.region) {
-      requestParams.region = params.region;
-    }
 
     // Remove undefined values
     Object.keys(requestParams).forEach(
-      (key) => requestParams[key] === undefined && delete requestParams[key],
+      (key) =>
+        requestParams[key] === undefined &&
+        delete requestParams[key as keyof typeof requestParams],
     );
 
-    const response = await this.client.reverseGeocode({
+    const response = await this.client.geocode({
       params: requestParams,
       timeout: this.config.timeout || 5000,
     });
@@ -196,15 +270,19 @@ export class GeocodingTool {
   /**
    * Handle API errors consistently
    */
-  private handleError(error: any): GeocodeToolResponse {
-    if (error.response?.data) {
-      return error.response.data;
+  private handleError(error: unknown): GeocodeToolResponse {
+    if (error && typeof error === "object" && "response" in error) {
+      const apiError = error as { response?: { data?: unknown } };
+      if (apiError.response?.data) {
+        return apiError.response.data as GeocodeToolResponse;
+      }
     }
     // For non-API errors, create a response in the expected format
+    const message = error instanceof Error ? error.message : String(error);
     return {
       status: Status.INVALID_REQUEST,
       results: [],
-      error_message: error.message,
+      error_message: message,
     };
   }
 
